@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BaseLine — MLB Scores, Standings & Stats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0d0f;
+    --surface:#14181c;
+    --surface-2:#1b2026;
+    --line:rgba(255,255,255,.07);
+    --ink:#eef2f3;
+    --muted:#8b949c;
+    --dim:#5f6970;
+    --green:#1fd65f;
+    --green-dk:#16b34d;
+    --red:#ff4438;
+    --gold:#ffc52f;
+    --ease:cubic-bezier(.16,1,.3,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:'Hanken Grotesk',sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:40px}
+  .wrap{max-width:620px;margin:0 auto}
+
+  /* HEADER */
+  header{position:sticky;top:0;z-index:40;background:rgba(10,13,15,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+  .head-top{display:flex;align-items:center;justify-content:space-between;padding:14px 18px}
+  .logo{display:flex;align-items:center;gap:9px;font-family:'Archivo';font-weight:900;font-size:21px;letter-spacing:-.02em}
+  .logo .m{width:26px;height:26px;border-radius:7px;background:var(--green);position:relative;box-shadow:0 0 18px rgba(31,214,95,.45);display:grid;place-items:center}
+  .logo .m::before{content:"";width:13px;height:13px;border:2px solid #0a0d0f;border-radius:50%;border-top-color:transparent;border-right-color:transparent;transform:rotate(45deg)}
+  .logo span{color:var(--green)}
+  .live-dot{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-weight:600}
+  .live-dot i{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.6s infinite}
+  @keyframes pulse{50%{opacity:.3}}
+
+  /* TABS */
+  .tabs{display:flex;gap:4px;padding:0 12px}
+  .tab{flex:1;text-align:center;padding:13px 2px;font-family:'Archivo';font-weight:700;font-size:12.5px;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;transition:color .2s,border-color .2s;letter-spacing:-.01em}
+  .tab.active{color:var(--ink);border-color:var(--green)}
+  .tab:hover{color:var(--ink)}
+
+  /* PANELS */
+  .panel{display:none;padding:16px 14px;animation:fade .35s var(--ease)}
+  .panel.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}}
+
+  /* date pills */
+  .dates{display:flex;gap:8px;overflow-x:auto;padding:2px 0 16px;scrollbar-width:none}
+  .dates::-webkit-scrollbar{display:none}
+  .datepill{flex:none;padding:8px 15px;border-radius:100px;background:var(--surface);border:1px solid var(--line);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .18s}
+  .datepill.sel{background:var(--green);color:#06150b;border-color:var(--green);font-weight:700}
+  .datepill .dd{font-size:11px;opacity:.7;display:block;font-weight:500}
+  .datepill.sel .dd{opacity:.8}
+
+  .daygroup{margin-bottom:8px}
+  .daylabel{font-family:'Archivo';font-weight:700;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin:18px 4px 10px}
+
+  /* game card */
+  .game{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:background .18s,transform .18s}
+  .game:hover{background:var(--surface-2);transform:translateX(2px)}
+  .g-status{flex:none;width:54px;text-align:center;font-size:11px;font-weight:700;color:var(--dim);font-family:'Archivo'}
+  .g-status.final{color:var(--muted)}
+  .g-status.live{color:var(--red)}
+  .g-status .time{font-size:13px;color:var(--ink);font-weight:600}
+  .g-teams{flex:1;display:flex;flex-direction:column;gap:9px;border-left:1px solid var(--line);padding-left:14px}
+  .g-row{display:flex;align-items:center;gap:10px}
+  .badge{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-family:'Archivo';font-weight:800;font-size:9px;color:#fff;letter-spacing:-.02em}
+  .g-name{flex:1;font-size:14.5px;font-weight:600}
+  .g-score{font-family:'Archivo';font-weight:800;font-size:17px;color:var(--muted);min-width:24px;text-align:right}
+  .g-row.win .g-name{color:var(--ink)}
+  .g-row.win .g-score{color:var(--ink)}
+  .g-row.lose .g-name,.g-row.lose .g-score{color:var(--dim)}
+  .g-win-mark{flex:none;width:5px;height:5px;border-radius:50%;background:transparent}
+  .g-row.win .g-win-mark{background:var(--green)}
+
+  /* standings */
+  .seg{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:4px;margin-bottom:18px}
+  .seg button{flex:1;padding:9px 0;border:none;background:transparent;color:var(--muted);font-family:'Archivo';font-weight:700;font-size:13.5px;border-radius:8px;cursor:pointer;transition:all .18s}
+  .seg button.on{background:var(--green);color:#06150b}
+  .div-title{font-family:'Archivo';font-weight:800;font-size:14px;margin:20px 4px 10px;display:flex;align-items:center;gap:8px}
+  .div-title::before{content:"";width:3px;height:15px;background:var(--green);border-radius:2px}
+  .standtable{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .st-head,.st-row{display:grid;grid-template-columns:26px 1fr 34px 34px 44px 50px;align-items:center;gap:8px;padding:11px 14px;font-size:13px}
+  .st-head{color:var(--dim);font-size:10.5px;font-weight:700;font-family:'Archivo';text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line)}
+  .st-row{border-bottom:1px solid var(--line)}
+  .st-row:last-child{border-bottom:none}
+  .st-row.leader{background:rgba(31,214,95,.06)}
+  .st-rank{font-family:'Archivo';font-weight:700;color:var(--dim);font-size:12px}
+  .st-team{display:flex;align-items:center;gap:9px;font-weight:600;font-size:13.5px;overflow:hidden}
+  .st-team .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .st-num{text-align:center;font-family:'Archivo';font-weight:600;color:var(--muted)}
+  .st-pct{text-align:center;font-family:'Archivo';font-weight:700}
+  .st-gb{text-align:center;font-family:'Archivo';color:var(--muted)}
+  .clinch{color:var(--green);font-size:10px}
+
+  /* stats */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px}
+  .card h3{font-family:'Archivo';font-weight:800;font-size:15px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+  .card .sub{color:var(--dim);font-size:12.5px;margin-bottom:14px}
+  .lead-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .lead-row:last-child{border:none;padding-bottom:0}
+  .lead-rank{font-family:'Archivo';font-weight:800;font-size:15px;width:20px;color:var(--dim)}
+  .lead-rank.top{color:var(--green)}
+  .lead-name{flex:1;font-weight:600;font-size:14px}
+  .lead-rec{font-family:'Archivo';font-weight:600;color:var(--muted);font-size:13px}
+  .lead-bar{width:60px;height:6px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+  .lead-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--green-dk),var(--green));border-radius:6px}
+  .lead-pct{font-family:'Archivo';font-weight:800;font-size:14px;width:42px;text-align:right}
+  .divgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .divcard{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:13px}
+  .divcard .dl{font-size:10.5px;color:var(--dim);font-weight:700;font-family:'Archivo';text-transform:uppercase;letter-spacing:.04em;margin-bottom:9px}
+  .divcard .dt{display:flex;align-items:center;gap:9px}
+  .divcard .dt .nm{font-weight:700;font-size:14px}
+  .divcard .dr{font-family:'Archivo';font-size:11.5px;color:var(--muted);margin-top:5px;margin-left:33px}
+
+  /* news */
+  .news-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px;display:block;text-decoration:none;color:inherit;transition:background .18s,transform .18s}
+  .news-card:hover{background:var(--surface-2);transform:translateY(-2px)}
+  .news-cat{display:inline-block;font-family:'Archivo';font-weight:700;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--green);margin-bottom:9px}
+  .news-cat.hot{color:var(--red)}
+  .news-cat.gold{color:var(--gold)}
+  .news-card h4{font-family:'Archivo';font-weight:800;font-size:17px;line-height:1.2;letter-spacing:-.01em;margin-bottom:8px}
+  .news-card p{color:var(--muted);font-size:14px;line-height:1.5;margin-bottom:10px}
+  .news-meta{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--dim)}
+  .news-meta .arrow{color:var(--green);font-weight:700;font-family:'Archivo'}
+
+  footer{text-align:center;color:var(--dim);font-size:11.5px;padding:24px 18px 8px;line-height:1.7}
+  footer a{color:var(--muted);text-decoration:none}
+  /* player leaders */
+  .pl-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-bottom:14px}
+  .pl-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 12px}
+  .pl-head h3{font-family:'Archivo';font-weight:800;font-size:15px}
+  .pl-head .unit{font-family:'Archivo';font-weight:700;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+  .pl-row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid var(--line)}
+  .pl-row.top{background:rgba(31,214,95,.06)}
+  .pl-rank{font-family:'Archivo';font-weight:800;font-size:15px;width:20px;text-align:center;color:var(--dim)}
+  .pl-row.top .pl-rank{color:var(--green)}
+  .pl-ava{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-family:'Archivo';font-weight:800;font-size:13px;color:#fff;letter-spacing:-.03em}
+  .pl-info{flex:1;min-width:0}
+  .pl-name{font-weight:700;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pl-meta{font-size:12px;color:var(--muted);margin-top:1px}
+  .pl-val{font-family:'Archivo';font-weight:800;font-size:18px;color:var(--ink)}
+  .pl-row.top .pl-val{color:var(--green);font-size:21px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="head-top">
+      <div class="logo"><span class="m"></span>Base<span>Line</span></div>
+      <div class="live-dot"><i></i>2026 SEASON</div>
+    </div>
+    <div class="tabs">
+      <div class="tab active" data-tab="scores">Scores</div>
+      <div class="tab" data-tab="standings">Standings</div>
+      <div class="tab" data-tab="stats">Stats</div>
+      <div class="tab" data-tab="players">Players</div>
+      <div class="tab" data-tab="news">News</div>
+    </div>
+  </header>
+
+  <div class="panel active" id="scores">
+    <div class="dates" id="dates"></div>
+    <div id="gamesList"></div>
+  </div>
+
+  <div class="panel" id="standings">
+    <div class="seg" id="leagueSeg">
+      <button class="on" data-lg="American League">American League</button>
+      <button data-lg="National League">National League</button>
+    </div>
+    <div id="standList"></div>
+  </div>
+
+  <div class="panel" id="stats">
+    <div class="card">
+      <h3>⚡ Power Index</h3>
+      <div class="sub">MLB's best records · 2026</div>
+      <div id="powerList"></div>
+    </div>
+    <div class="card">
+      <h3>🏆 Division Leaders</h3>
+      <div class="sub">Who's on top in each division</div>
+      <div class="divgrid" id="divLeaders"></div>
+    </div>
+    <div class="card">
+      <h3>📊 Storylines</h3>
+      <div class="sub">What the numbers are saying</div>
+      <div id="storyList"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="players">
+    <div class="seg" id="ptypeSeg">
+      <button class="on" data-pt="bat">Batting</button>
+      <button data-pt="pit">Pitching</button>
+    </div>
+    <div id="leaderWrap"></div>
+  </div>
+
+  <div class="panel" id="news">
+    <div id="newsList"></div>
+  </div>
+
+  <footer>
+    BaseLine · Live MLB data · Updated Jun 3, 2026<br>
+    A demo hub — scores &amp; standings reflect real games.
+  </footer>
+</div>
+
+<script>
+  /* ---------- team colors ---------- */
+  const TC={
+    NYY:"#0C2340",BOS:"#BD3039",TB:"#092C5C",TOR:"#134A8E",BAL:"#DF4601",
+    CLE:"#0C2340",CWS:"#1a1a1a",MIN:"#002B5C",DET:"#0C2340",KC:"#004687",
+    SEA:"#0C2C56",TEX:"#003278",ATH:"#005C2E",HOU:"#002D62",LAA:"#BA0021",
+    ATL:"#CE1141",PHI:"#E81828",WSH:"#AB0003",MIA:"#00A3E0",NYM:"#002D72",
+    MIL:"#12284B",PIT:"#c99700",STL:"#C41E3A",CHC:"#0E3386",CIN:"#C6011F",
+    LAD:"#005A9C",SD:"#4a3526",AZ:"#A71930",COL:"#333366",SF:"#FD5A1E"
+  };
+  const NAME={
+    NYY:"Yankees",BOS:"Red Sox",TB:"Rays",TOR:"Blue Jays",BAL:"Orioles",
+    CLE:"Guardians",CWS:"White Sox",MIN:"Twins",DET:"Tigers",KC:"Royals",
+    SEA:"Mariners",TEX:"Rangers",ATH:"Athletics",HOU:"Astros",LAA:"Angels",
+    ATL:"Braves",PHI:"Phillies",WSH:"Nationals",MIA:"Marlins",NYM:"Mets",
+    MIL:"Brewers",PIT:"Pirates",STL:"Cardinals",CHC:"Cubs",CIN:"Reds",
+    LAD:"Dodgers",SD:"Padres",AZ:"D-backs",COL:"Rockies",SF:"Giants"
+  };
+  const badge = ab => `<span class="badge" style="background:${TC[ab]||'#333'}">${ab}</span>`;
+
+  /* ---------- games (real results & schedule) ---------- */
+  // a=away h=home as/hs=scores  st: "F"=final or time string  d=date
+  const GAMES=[
+    // May 31
+    {d:"May 31",a:"KC",h:"TEX",as:3,hs:6,st:"F"},
+    {d:"May 31",a:"SF",h:"COL",as:19,hs:6,st:"F"},
+    {d:"May 31",a:"NYY",h:"ATH",as:13,hs:8,st:"F"},
+    {d:"May 31",a:"PHI",h:"LAD",as:1,hs:9,st:"F"},
+    {d:"May 31",a:"AZ",h:"SEA",as:2,hs:3,st:"F"},
+    {d:"May 31",a:"CHC",h:"STL",as:1,hs:5,st:"F"},
+    // Jun 1
+    {d:"Jun 1",a:"DET",h:"TB",as:10,hs:9,st:"F"},
+    {d:"Jun 1",a:"MIA",h:"WSH",as:7,hs:3,st:"F"},
+    {d:"Jun 1",a:"KC",h:"CIN",as:9,hs:2,st:"F"},
+    {d:"Jun 1",a:"CWS",h:"MIN",as:6,hs:9,st:"F"},
+    {d:"Jun 1",a:"SF",h:"MIL",as:2,hs:16,st:"F"},
+    {d:"Jun 1",a:"TEX",h:"STL",as:2,hs:1,st:"F"},
+    {d:"Jun 1",a:"COL",h:"LAA",as:9,hs:8,st:"F"},
+    {d:"Jun 1",a:"NYM",h:"SEA",as:2,hs:3,st:"F"},
+    {d:"Jun 1",a:"LAD",h:"AZ",as:1,hs:4,st:"F"},
+    // Jun 2
+    {d:"Jun 2",a:"DET",h:"TB",as:8,hs:0,st:"F"},
+    {d:"Jun 2",a:"SD",h:"PHI",as:2,hs:3,st:"F"},
+    {d:"Jun 2",a:"MIA",h:"WSH",as:7,hs:3,st:"F"},
+    {d:"Jun 2",a:"BAL",h:"BOS",as:4,hs:2,st:"F"},
+    {d:"Jun 2",a:"CLE",h:"NYY",as:9,hs:4,st:"F"},
+    {d:"Jun 2",a:"KC",h:"CIN",as:3,hs:4,st:"F"},
+    {d:"Jun 2",a:"TOR",h:"ATL",as:3,hs:4,st:"F"},
+    {d:"Jun 2",a:"SF",h:"MIL",as:3,hs:8,st:"F"},
+    {d:"Jun 2",a:"CWS",h:"MIN",as:4,hs:6,st:"F"},
+    {d:"Jun 2",a:"TEX",h:"STL",as:7,hs:4,st:"F"},
+    {d:"Jun 2",a:"ATH",h:"CHC",as:2,hs:1,st:"F"},
+    {d:"Jun 2",a:"PIT",h:"HOU",as:10,hs:6,st:"F"},
+    {d:"Jun 2",a:"COL",h:"LAA",as:8,hs:2,st:"F"},
+    {d:"Jun 2",a:"LAD",h:"AZ",as:6,hs:5,st:"F"},
+    {d:"Jun 2",a:"NYM",h:"SEA",as:3,hs:8,st:"F"},
+    // Jun 3 (today)
+    {d:"Jun 3",a:"MIA",h:"WSH",st:"1:05 PM"},
+    {d:"Jun 3",a:"DET",h:"TB",st:"1:10 PM"},
+    {d:"Jun 3",a:"CWS",h:"MIN",st:"1:40 PM"},
+    {d:"Jun 3",a:"NYM",h:"SEA",st:"3:40 PM"},
+    {d:"Jun 3",a:"SD",h:"PHI",st:"6:40 PM"},
+    {d:"Jun 3",a:"BAL",h:"BOS",st:"6:45 PM"},
+    {d:"Jun 3",a:"CLE",h:"NYY",st:"7:05 PM"},
+    {d:"Jun 3",a:"KC",h:"CIN",st:"7:10 PM"},
+    {d:"Jun 3",a:"TOR",h:"ATL",st:"7:15 PM"},
+    {d:"Jun 3",a:"SF",h:"MIL",st:"7:40 PM"},
+    {d:"Jun 3",a:"TEX",h:"STL",st:"7:45 PM"},
+    {d:"Jun 3",a:"ATH",h:"CHC",st:"8:05 PM"},
+    {d:"Jun 3",a:"PIT",h:"HOU",st:"8:10 PM"},
+    {d:"Jun 3",a:"COL",h:"LAA",st:"9:38 PM"},
+    {d:"Jun 3",a:"LAD",h:"AZ",st:"9:40 PM"},
+    // Jun 4
+    {d:"Jun 4",a:"SD",h:"PHI",st:"1:05 PM"},
+    {d:"Jun 4",a:"CLE",h:"NYY",st:"1:35 PM"},
+    {d:"Jun 4",a:"BAL",h:"BOS",st:"1:35 PM"},
+    {d:"Jun 4",a:"SF",h:"MIL",st:"2:10 PM"},
+    {d:"Jun 4",a:"TOR",h:"ATL",st:"7:15 PM"},
+    {d:"Jun 4",a:"KC",h:"MIN",st:"7:40 PM"},
+    {d:"Jun 4",a:"ATH",h:"CHC",st:"8:05 PM"},
+    {d:"Jun 4",a:"PIT",h:"HOU",st:"8:10 PM"},
+    {d:"Jun 4",a:"LAD",h:"AZ",st:"9:40 PM"},
+    // Jun 5
+    {d:"Jun 5",a:"SF",h:"CHC",st:"2:20 PM"},
+    {d:"Jun 5",a:"SEA",h:"DET",st:"6:40 PM"},
+    {d:"Jun 5",a:"CWS",h:"PHI",st:"6:40 PM"},
+    {d:"Jun 5",a:"BOS",h:"NYY",st:"7:05 PM"},
+    {d:"Jun 5",a:"BAL",h:"TOR",st:"7:07 PM"},
+    {d:"Jun 5",a:"TB",h:"MIA",st:"7:10 PM"},
+  ];
+  const DATE_ORDER=["May 31","Jun 1","Jun 2","Jun 3","Jun 4","Jun 5"];
+  const DAY_NAME={"May 31":"Sat","Jun 1":"Sun","Jun 2":"Tue","Jun 3":"Wed","Jun 4":"Thu","Jun 5":"Fri"};
+  let curDate="Jun 3";
+
+  function renderDates(){
+    const el=document.getElementById('dates');
+    el.innerHTML=DATE_ORDER.map(d=>{
+      const today = d==="Jun 3" ? " · Today":"";
+      return `<div class="datepill ${d===curDate?'sel':''}" data-d="${d}"><span class="dd">${DAY_NAME[d]}${today}</span>${d}</div>`;
+    }).join('');
+    el.querySelectorAll('.datepill').forEach(p=>p.onclick=()=>{curDate=p.dataset.d;renderDates();renderGames();});
+  }
+  function gameCard(g){
+    const final = g.st==="F";
+    let awayWin=false,homeWin=false;
+    if(final){ awayWin=g.as>g.hs; homeWin=g.hs>g.as; }
+    const statusHtml = final
+      ? `<div class="g-status final">Final</div>`
+      : `<div class="g-status"><div class="time">${g.st}</div></div>`;
+    const aClass = final ? (awayWin?'win':'lose') : '';
+    const hClass = final ? (homeWin?'win':'lose') : '';
+    return `<div class="game">
+      ${statusHtml}
+      <div class="g-teams">
+        <div class="g-row ${aClass}"><span class="g-win-mark"></span>${badge(g.a)}<span class="g-name">${NAME[g.a]}</span><span class="g-score">${final?g.as:''}</span></div>
+        <div class="g-row ${hClass}"><span class="g-win-mark"></span>${badge(g.h)}<span class="g-name">${NAME[g.h]}</span><span class="g-score">${final?g.hs:''}</span></div>
+      </div>
+    </div>`;
+  }
+  function renderGames(){
+    const list=GAMES.filter(g=>g.d===curDate);
+    const wrap=document.getElementById('gamesList');
+    if(!list.length){ wrap.innerHTML='<div style="text-align:center;color:var(--dim);padding:40px">No games.</div>'; return; }
+    const anyFinal=list.some(g=>g.st==="F");
+    wrap.innerHTML=`<div class="daylabel">${anyFinal?'Final':'Scheduled'} · ${list.length} games</div>`+list.map(gameCard).join('');
+  }
+
+  /* ---------- standings (real W-L) ---------- */
+  const STAND=[
+    {lg:"American League",dv:"East",t:"TB",w:36,l:22},{lg:"American League",dv:"East",t:"NYY",w:36,l:24},{lg:"American League",dv:"East",t:"BAL",w:29,l:32},{lg:"American League",dv:"East",t:"TOR",w:29,l:32},{lg:"American League",dv:"East",t:"BOS",w:25,l:34},
+    {lg:"American League",dv:"Central",t:"CLE",w:35,l:27},{lg:"American League",dv:"Central",t:"CWS",w:32,l:29},{lg:"American League",dv:"Central",t:"MIN",w:29,l:33},{lg:"American League",dv:"Central",t:"DET",w:24,l:38},{lg:"American League",dv:"Central",t:"KC",w:23,l:38},
+    {lg:"American League",dv:"West",t:"SEA",w:33,l:29},{lg:"American League",dv:"West",t:"TEX",w:30,l:31},{lg:"American League",dv:"West",t:"ATH",w:29,l:31},{lg:"American League",dv:"West",t:"HOU",w:27,l:35},{lg:"American League",dv:"West",t:"LAA",w:23,l:39},
+    {lg:"National League",dv:"East",t:"ATL",w:41,l:20},{lg:"National League",dv:"East",t:"PHI",w:31,l:29},{lg:"National League",dv:"East",t:"WSH",w:31,l:31},{lg:"National League",dv:"East",t:"MIA",w:28,l:34},{lg:"National League",dv:"East",t:"NYM",w:26,l:35},
+    {lg:"National League",dv:"Central",t:"MIL",w:37,l:21},{lg:"National League",dv:"Central",t:"PIT",w:33,l:28},{lg:"National League",dv:"Central",t:"STL",w:31,l:28},{lg:"National League",dv:"Central",t:"CHC",w:32,l:29},{lg:"National League",dv:"Central",t:"CIN",w:31,l:29},
+    {lg:"National League",dv:"West",t:"LAD",w:39,l:22},{lg:"National League",dv:"West",t:"SD",w:32,l:27},{lg:"National League",dv:"West",t:"AZ",w:32,l:28},{lg:"National League",dv:"West",t:"COL",w:24,l:38},{lg:"National League",dv:"West",t:"SF",w:23,l:38},
+  ];
+  const pct = (w,l) => (w/(w+l)).toFixed(3).replace(/^0/,'');
+  const gb = (lead,t) => { const v=((lead.w-t.w)+(t.l-lead.l))/2; return v===0?"—":v.toFixed(1); };
+  let curLg="American League";
+
+  function renderStandings(){
+    const wrap=document.getElementById('standList');
+    const divs=["East","Central","West"];
+    wrap.innerHTML=divs.map(dv=>{
+      const teams=STAND.filter(s=>s.lg===curLg&&s.dv===dv);
+      const lead=teams[0];
+      const rows=teams.map((t,i)=>`
+        <div class="st-row ${i===0?'leader':''}">
+          <span class="st-rank">${i+1}</span>
+          <span class="st-team">${badge(t.t)}<span class="nm">${NAME[t.t]}</span>${i===0?'<span class="clinch">●</span>':''}</span>
+          <span class="st-num">${t.w}</span>
+          <span class="st-num">${t.l}</span>
+          <span class="st-pct">${pct(t.w,t.l)}</span>
+          <span class="st-gb">${gb(lead,t)}</span>
+        </div>`).join('');
+      return `<div class="div-title">${curLg.split(' ')[0]==='American'?'AL':'NL'} ${dv}</div>
+        <div class="standtable">
+          <div class="st-head"><span></span><span>Team</span><span style="text-align:center">W</span><span style="text-align:center">L</span><span style="text-align:center">PCT</span><span style="text-align:center">GB</span></div>
+          ${rows}
+        </div>`;
+    }).join('');
+  }
+  document.querySelectorAll('#leagueSeg button').forEach(b=>b.onclick=()=>{
+    document.querySelectorAll('#leagueSeg button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); curLg=b.dataset.lg; renderStandings();
+  });
+
+  /* ---------- stats ---------- */
+  function renderStats(){
+    // power index — sort all by pct
+    const all=[...STAND].sort((a,b)=> (b.w/(b.w+b.l)) - (a.w/(a.w+a.l)) ).slice(0,10);
+    const topPct=all[0].w/(all[0].w+all[0].l);
+    document.getElementById('powerList').innerHTML=all.map((t,i)=>{
+      const p=t.w/(t.w+t.l);
+      return `<div class="lead-row">
+        <span class="lead-rank ${i<3?'top':''}">${i+1}</span>
+        ${badge(t.t)}
+        <span class="lead-name">${NAME[t.t]}</span>
+        <span class="lead-rec">${t.w}-${t.l}</span>
+        <span class="lead-bar"><i style="width:${(p/topPct*100).toFixed(0)}%"></i></span>
+        <span class="lead-pct">${pct(t.w,t.l)}</span>
+      </div>`;
+    }).join('');
+
+    // division leaders
+    const divs=[["American League","East"],["American League","Central"],["American League","West"],["National League","East"],["National League","Central"],["National League","West"]];
+    document.getElementById('divLeaders').innerHTML=divs.map(([lg,dv])=>{
+      const t=STAND.filter(s=>s.lg===lg&&s.dv===dv)[0];
+      return `<div class="divcard">
+        <div class="dl">${lg.split(' ')[0]==='American'?'AL':'NL'} ${dv}</div>
+        <div class="dt">${badge(t.t)}<span class="nm">${NAME[t.t]}</span></div>
+        <div class="dr">${t.w}-${t.l} · ${pct(t.w,t.l)}</div>
+      </div>`;
+    }).join('');
+
+    // storylines (from real records + news)
+    const stories=[
+      {tag:"Hottest team",cls:"",txt:"The <b>Braves</b> own MLB's best record at 41-20 — a .672 clip that leads the National League by a comfortable margin."},
+      {tag:"Awards watch",cls:"gold",txt:"Brewers sophomore <b>Jacob Misiorowski</b> has pitched into the NL Cy Young conversation after Milwaukee won all six of his May starts."},
+      {tag:"Free fall",cls:"hot",txt:"The <b>Giants</b> (23-38) and <b>Rockies</b> (24-38) sit at the bottom of the NL West, a combined 31 games back of the Dodgers."},
+      {tag:"Tight race",cls:"",txt:"The <b>NL West</b> is stacked — Dodgers, Padres and D-backs are all above .500 and within striking distance at the top."},
+    ];
+    document.getElementById('storyList').innerHTML=stories.map((s,i)=>`
+      <div class="lead-row" style="align-items:flex-start;flex-direction:column;gap:5px">
+        <span class="news-cat ${s.cls}">${s.tag}</span>
+        <p style="color:var(--muted);font-size:14px;line-height:1.5;margin:0">${s.txt}</p>
+      </div>`).join('');
+  }
+
+  /* ---------- player leaders (real 2026 season) ---------- */
+  const BAT={
+    HR:{label:"Home Runs",unit:"HR",rows:[["Kyle Schwarber","PHI","DH",22],["Yordan Alvarez","HOU","DH",21],["Munetaka Murakami","CWS","1B",20],["Byron Buxton","MIN","CF",17],["Matt Olson","ATL","1B",17]]},
+    AVG:{label:"Batting Average",unit:"AVG",rows:[["Otto Lopez","MIA","SS",".335"],["Brandon Marsh","PHI","LF",".332"],["Luis Arraez","SF","2B",".323"],["Troy Johnston","COL","RF",".316"],["Yandy Diaz","TB","DH",".314"]]},
+    RBI:{label:"Runs Batted In",unit:"RBI",rows:[["Andy Pages","LAD","CF",51],["C.J. Abrams","WSH","SS",47],["Liam Hicks","MIA","C",46],["Matt Olson","ATL","1B",46],["Ben Rice","NYY","1B",44]]},
+    H:{label:"Hits",unit:"H",rows:[["Otto Lopez","MIA","SS",80],["Luis Arraez","SF","2B",73],["Xavier Edwards","MIA","2B",71],["Ernie Clement","TOR","2B",70],["Riley Greene","DET","LF",69]]},
+    OPS:{label:"OPS",unit:"OPS",rows:[["Yordan Alvarez","HOU","DH","1.064"],["Ben Rice","NYY","1B","1.047"],["Nick Kurtz","ATH","1B",".952"],["Munetaka Murakami","CWS","1B",".938"],["Kyle Schwarber","PHI","DH",".937"]]},
+    SB:{label:"Stolen Bases",unit:"SB",rows:[["Nasim Nunez","WSH","2B",22],["Jose Ramirez","CLE","3B",20],["Oneil Cruz","PIT","CF",19],["Bobby Witt Jr.","KC","SS",19],["Randy Arozarena","SEA","LF",17]]},
+  };
+  const PIT={
+    ERA:{label:"Earned Run Avg",unit:"ERA",rows:[["Cristopher Sanchez","PHI","SP","1.47"],["Nick Martinez","TB","SP","1.62"],["Jacob Misiorowski","MIL","SP","1.65"],["Cam Schlittler","NYY","SP","1.89"],["Chase Burns","CIN","SP","1.96"]]},
+    SO:{label:"Strikeouts",unit:"K",rows:[["Jacob Misiorowski","MIL","SP",108],["Cristopher Sanchez","PHI","SP",95],["Dylan Cease","TOR","SP",92],["Gavin Williams","CLE","SP",88],["Jose Soriano","LAA","SP",85]]},
+    W:{label:"Wins",unit:"W",rows:[["Aaron Ashby","MIL","RP",9],["Davis Martin","CWS","SP",8],["Chris Sale","ATL","SP",8],["Gavin Williams","CLE","SP",8],["Cam Schlittler","NYY","SP",7]]},
+    SV:{label:"Saves",unit:"SV",rows:[["Cade Smith","CLE","RP",20],["Mason Miller","SD","RP",17],["Bryan Baker","TB","RP",16],["Paul Sewald","AZ","RP",15],["Riley O'Brien","STL","RP",14]]},
+    WHIP:{label:"WHIP",unit:"WHIP",rows:[["Jacob Misiorowski","MIL","SP","0.79"],["Cam Schlittler","NYY","SP","0.86"],["Paul Skenes","PIT","SP","0.86"],["Chris Sale","ATL","SP","0.94"],["Emerson Hancock","SEA","SP","0.95"]]},
+  };
+  function initials(name){const p=name.replace(/[.']/g,'').split(' ');return (p[0][0]+(p[p.length-1][0]||'')).toUpperCase();}
+  let curPType="bat";
+  function renderLeaders(){
+    const set = curPType==="bat" ? BAT : PIT;
+    const order = curPType==="bat" ? ["HR","AVG","RBI","H","OPS","SB"] : ["ERA","SO","W","SV","WHIP"];
+    document.getElementById('leaderWrap').innerHTML = order.map(k=>{
+      const s=set[k];
+      const rows=s.rows.map((r,i)=>{
+        const [name,tm,pos,val]=r;
+        return `<div class="pl-row ${i===0?'top':''}">
+          <span class="pl-rank">${i+1}</span>
+          <span class="pl-ava" style="background:${TC[tm]||'#333'}">${initials(name)}</span>
+          <span class="pl-info"><div class="pl-name">${name}</div><div class="pl-meta">${NAME[tm]||tm} · ${pos}</div></span>
+          <span class="pl-val">${val}</span>
+        </div>`;
+      }).join('');
+      return `<div class="pl-card"><div class="pl-head"><h3>${s.label}</h3><span class="unit">${s.unit}</span></div>${rows}</div>`;
+    }).join('');
+  }
+  document.querySelectorAll('#ptypeSeg button').forEach(b=>b.onclick=()=>{
+    document.querySelectorAll('#ptypeSeg button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); curPType=b.dataset.pt; renderLeaders();
+  });
+
+  /* ---------- news (real, paraphrased) ---------- */
+  const NEWS=[
+    {cat:"Analysis",cls:"",title:"Braves, Brewers & Dodgers headline June power rankings",blurb:"Two months in, three clubs have separated from the pack while the Phillies round into form and the fast-starting Reds drift back toward the field.",src:"Just Baseball",age:"2d",url:"https://www.justbaseball.com/mlb/power-rankings-2026-june-update/"},
+    {cat:"Awards Watch",cls:"gold",title:"Misiorowski pitches his way into the Cy Young race",blurb:"The Brewers won all six of the sophomore right-hander's May starts as he emerged as a legitimate NL Cy Young contender.",src:"Just Baseball",age:"2d",url:"https://www.justbaseball.com/mlb/power-rankings-2026-june-update/"},
+    {cat:"Recap",cls:"",title:"Guardians topple Yankees as Brewers roll again",blurb:"Cleveland handled New York and Milwaukee kept winning on a loaded June 2 slate around the league.",src:"New Baseball Media",age:"6h",url:"https://newbaseballmedia.com/2026-mlb-daily-recap-june-2/"},
+    {cat:"Storylines",cls:"",title:"The bats each team needs to heat up in June",blurb:"Writers flag names like Vlad Guerrero Jr., Gunnar Henderson (a team-leading 13 HR) and Jorge Soler as hitters due for a surge.",src:"MLB.com",age:"3d",url:"https://www.mlb.com/news/one-player-each-mlb-team-hopes-will-heat-up-in-june-2026"},
+    {cat:"Injuries",cls:"hot",title:"Injury report: updates on Judge & Verlander",blurb:"The latest status checks on some of the league's biggest names currently working back from the IL.",src:"New Baseball Media",age:"7h",url:"https://newbaseballmedia.com/2026-mlb-daily-recap-june-2/"},
+    {cat:"Recap",cls:"",title:"Dodgers answer back against Arizona",blurb:"After dropping the opener, Los Angeles edged the D-backs in a one-run thriller to even up the series.",src:"Sportskeeda",age:"3h",url:"https://www.sportskeeda.com/baseball/news-mlb-picks-today-5-best-bets-predictions-ft-diamondbacks-vs-dodgers-angels-vs-rockies-june-3-2026"},
+  ];
+  function renderNews(){
+    document.getElementById('newsList').innerHTML=NEWS.map(n=>`
+      <a class="news-card" href="${n.url}" target="_blank" rel="noopener">
+        <span class="news-cat ${n.cls}">${n.cat}</span>
+        <h4>${n.title}</h4>
+        <p>${n.blurb}</p>
+        <div class="news-meta"><span>${n.src} · ${n.age} ago</span><span class="arrow">Read →</span></div>
+      </a>`).join('');
+  }
+
+  /* ---------- tabs ---------- */
+  document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.tab).classList.add('active');
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+
+  /* init */
+  renderDates(); renderGames(); renderStandings(); renderStats(); renderLeaders(); renderNews();
+</script>
+</body>
+</html>
